@@ -46,7 +46,99 @@ object ZIOEffects {
   val aSuccessfulIO: IO[String, Int] = ZIO.succeed(34)
   val aFailedIO: IO[String, Int] = ZIO.fail("Something bad happened")
 
-  def main(args: Array[String]): Unit = {
 
+  /**
+   * Exercises
+   */
+
+  // 1 - sequence two ZIOs and take the value of the last one
+  def sequenceTakeLast[R,E,A,B](zioa: ZIO[R,E,A], ziob: ZIO[R,E,B]): ZIO[R,E,B] =
+    zioa.flatMap(_ => ziob.map(b => b))
+  def sequenceTakeLast_v2[R,E,A,B](zioa: ZIO[R,E,A], ziob: ZIO[R,E,B]): ZIO[R,E,B] =
+    for {
+      _ <- zioa
+      b <- ziob
+    } yield b
+  // built-into ZIO
+  def sequenceTakeLast_v3[R,E,A,B](zioa: ZIO[R,E,A], ziob: ZIO[R,E,B]): ZIO[R,E,B] =
+    zioa *> ziob
+
+  // 2 - sequence two ZIOs and take the value of the first one
+  def sequenceTakeFirst[R,E,A,B](zioa: ZIO[R,E,A], ziob: ZIO[R,E,B]): ZIO[R,E,A] =
+    zioa.flatMap(a => ziob.map(_ => a))
+  // built-into ZIO
+  def sequenceTakeFirst_v2[R,E,A,B](zioa: ZIO[R,E,A], ziob: ZIO[R,E,B]): ZIO[R,E,A] =
+    zioa <* ziob
+
+  // 3 - run a ZIO forever
+  def runForever[R,E,A](zio: ZIO[R,E,A]): ZIO[R,E,A] =
+    zio.flatMap(_ => runForever(zio))
+  def runForever_v2[R,E,A](zio: ZIO[R,E,A]): ZIO[R,E,A] =
+    zio *> runForever_v2(zio) // same
+
+  val endlessLoop = runForever {
+    ZIO.succeed {
+      println("running...")
+      Thread.sleep(1000)
+    }
+  }
+
+  // 4 - convert the value of a ZIO to something else
+  def convert[R,E,A,B](zio: ZIO[R,E,A], value: B): ZIO[R,E,B] =
+    zio.map(_ => value)
+  def convert_v2[R,E,A,B](zio: ZIO[R,E,A], value: B): ZIO[R,E,B] =
+    zio.as(value) // same
+
+  // 5 - discard the value of a ZIO to Unit
+  def asUnit[R,E,A](zio: ZIO[R,E,A]): ZIO[R,E,Unit] =
+    convert(zio, ())
+  def asUnit_v2[R,E,A](zio: ZIO[R,E,A]): ZIO[R,E,Unit] =
+    zio.unit // same
+
+  // 6 - recursion
+  def sum(n: Int): Int =
+    if (n == 0) 0
+    else n + sum(n - 1) // will crash at sum(20000)
+
+  def sumZIO(n: Int): UIO[Int] =
+    if (n == 0) ZIO.succeed(0)
+    else for {
+      current <- ZIO.succeed(n)
+      prevSum <- sumZIO(n - 1)
+    } yield current + prevSum
+
+  // 7 - fibonacci
+  // hint: use ZIO.suspend/ZIO.suspendSucceed
+  def fibo(n: Int): BigInt =
+    if (n <= 2) 1
+    else fibo(n - 1) + fibo(n - 2)
+
+  def fiboZIO(n: Int): UIO[BigInt] =
+    if (n <= 2) ZIO.succeed(1)
+    else for {
+      last <- ZIO.suspendSucceed(fiboZIO(n - 1))
+      prev <- fiboZIO(n - 2)
+    } yield last + prev
+
+  def main(args: Array[String]): Unit = {
+    val runtime = Runtime.default
+    given trace: Trace = Trace.empty
+    Unsafe.unsafeCompat { (u: Unsafe) =>
+      given uns: Unsafe = u
+
+      val firstEffect = ZIO.succeed {
+        println("computing first effect...")
+        Thread.sleep(1000)
+        1
+      }
+
+      val secondEffect = ZIO.succeed {
+        println("computing second effect...")
+        Thread.sleep(1000)
+        2
+      }
+
+      println(runtime.unsafe.run(sumZIO(20000)))
+    }
   }
 }
