@@ -36,7 +36,7 @@ object Effects {
    */
 
   /*
-    Example: Options = possibly absent values
+    Example: Option = possibly absent value
     - type signature describes the kind of computation = a possibly absent value
     - type signature says that the computation returns an A, if the computation does produce something
     - no side effects are needed
@@ -62,7 +62,7 @@ object Effects {
     - produces a value of type A if the computation is successful
     - side effects are required, construction IS SEPARATE from execution
 
-    My IO IS AN EFFECT!
+    MyIO IS AN EFFECT!
    */
   case class MyIO[A](unsafeRun: () => A) {
     def map[B](f: A => B): MyIO[B] =

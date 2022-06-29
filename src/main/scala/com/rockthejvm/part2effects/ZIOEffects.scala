@@ -30,7 +30,7 @@ object ZIOEffects {
   val combinedZIO = meaningOfLife.zipWith(anotherMOL)(_ * _)
 
   /**
-   * Type aliases of ZIOs
+   * Type aliases of ZIO
    */
   // UIO[A] = ZIO[Any,Nothing,A] - no requirements, cannot fail, produces A
   val aUIO: UIO[Int] = ZIO.succeed(99)
