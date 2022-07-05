@@ -66,5 +66,94 @@ object TransactionalEffects extends ZIOAppDefault {
     _ <- receiver.get.commit.debugThread // should NEVER be > 1000
   } yield ()
 
+
+  /*
+    STM data structures
+   */
+  // atomic variable: TRef
+  // same API: get, update, modify, set
+  val aVariable: USTM[TRef[Int]] = TRef.make(42)
+
+  // TArray
+  val specifiedValuesTArray: USTM[TArray[Int]] = TArray.make(1,2,3)
+  val iterableArray: USTM[TArray[Int]] = TArray.fromIterable(List(1,2,3,4,5))
+  // get/apply
+  val tArrayGetElem: USTM[Int] = for {
+    tArray <- iterableArray
+    elem <- tArray(2)
+  } yield elem
+  // update
+  val tArrayUpdateElem: USTM[TArray[Int]] = for {
+    tArray <- iterableArray
+    _ <- tArray.update(1, el => el + 10)
+  } yield tArray
+  // transform
+  val transformedArray: USTM[TArray[Int]] = for {
+    tArray <- iterableArray
+    _ <- tArray.transform(_ * 10) // like a map, but in place
+  } yield tArray
+  // fold/foldSTM, foreach
+
+  // TSet
+  // create
+  val specificValuesTSet: USTM[TSet[Int]] = TSet.make(1,2,3,4,5,1,2,3)
+  // contains
+  val tSetContainsElem: USTM[Boolean] = for {
+    tSet <- specificValuesTSet
+    res <- tSet.contains(3)
+  } yield res
+  // put
+  val putElem: USTM[TSet[Int]] = for {
+    tSet <- specificValuesTSet
+    _ <- tSet.put(7)
+  } yield tSet
+  // delete
+  val deleteElem: USTM[TSet[Int]] = for {
+    tSet <- specificValuesTSet
+    _ <- tSet.delete(1)
+  } yield tSet
+  // union, intersect, diff
+  // removeIf, retainIf
+  // transform, fold + STM versions
+
+  // TMap
+  val aTMapEffect: USTM[TMap[String, Int]] = TMap.make(("Daniel", 123), ("Alice", 456), ("QE2", 999))
+  // put
+  val putElemTMap: USTM[TMap[String, Int]] = for {
+    tMap <- aTMapEffect
+    _ <- tMap.put("Master Yoda", 111)
+  } yield tMap
+  // get
+  val getElemTMap: USTM[Option[Int]] = for {
+    tMap <- aTMapEffect
+    elem <- tMap.get("Daniel")
+  } yield elem
+  // delete, removeIf, retainIf
+  // transform + STM
+  // fold + STM
+  // foreach
+  // keys, values
+
+  // TQueue
+  val tQueueBounded: USTM[TQueue[Int]] = TQueue.bounded[Int](5)
+  // offer/offerAll
+  val demoOffer: USTM[TQueue[Int]] =
+    for {
+      tQueue <- tQueueBounded
+      _ <- tQueue.offerAll(List(1,2,3,4,5,6))
+    } yield tQueue
+  // take/takeAll
+  val demoTakeAll: USTM[Chunk[Int]] = for {
+    tQueue <- demoOffer
+    elems <- tQueue.takeAll
+  } yield elems
+  // takeOption, peek
+  // toList, toVector
+  // size
+
+  // TPriorityQueue
+  val maxQueue: USTM[TPriorityQueue[Int]] = TPriorityQueue.make(3,4,1,2,5)
+
+  
   def run = loop(cannotExploit(), 1)
 }
