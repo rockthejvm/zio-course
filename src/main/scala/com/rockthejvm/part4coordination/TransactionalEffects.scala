@@ -154,6 +154,89 @@ object TransactionalEffects extends ZIOAppDefault {
   // TPriorityQueue
   val maxQueue: USTM[TPriorityQueue[Int]] = TPriorityQueue.make(3,4,1,2,5)
 
-  
-  def run = loop(cannotExploit(), 1)
+
+  /*
+    Concurrent coordination
+   */
+  // TRef
+
+  // TPromise
+  // same API
+  val tPromiseEffect: USTM[TPromise[String, Int]] = TPromise.make[String, Int]
+  // await, poll
+  val tPromiseAwait: STM[String, Int] = for {
+    p <- tPromiseEffect
+    res <- p.await
+  } yield res
+  // succeed/fail/complete
+  val demoSucceed: USTM[Unit] = for {
+    p <- tPromiseEffect
+    _ <- p.succeed(100)
+  } yield ()
+
+  // TSemaphore
+  val tSemaphoreEffect: USTM[TSemaphore] = TSemaphore.make(10)
+  // acquire + acquireN
+  val semaphoreAcq: USTM[Unit] = for {
+    sem <- tSemaphoreEffect
+    _ <- sem.acquire
+  } yield ()
+  // release + releaseN
+  val semaphoreRel: USTM[Unit] = for {
+    sem <- tSemaphoreEffect
+    _ <- sem.release
+  } yield ()
+  // withPermit
+  val semWithPermit: UIO[Int] = tSemaphoreEffect.commit.flatMap { sem =>
+    sem.withPermit {
+      ZIO.succeed(42)
+    }
+  }
+
+  // TReentrantLock - can acquire the same lock multiple times without deadlock
+  // readers-writers problem
+  // has two locks: read lock (lower priority) and write lock (higher priority)
+  val reentrantLockEffect = TReentrantLock.make
+  val demoReentrantLock = for {
+    lock <- reentrantLockEffect
+    _ <- lock.acquireRead // acquires the read lock
+    _ <- STM.succeed(100) // critical section, only those that acquire read lock can access
+    rl <- lock.readLocked // status of the lock, whether is read-locked, true in this case
+    wl <- lock.writeLocked // same for writer
+  } yield ()
+
+  def demoReadersWriters(): UIO[Unit] = {
+    def read(i: Int, lock: TReentrantLock): UIO[Unit] = for {
+      _ <- lock.acquireRead.commit
+      // critical region
+      _ <- ZIO.succeed(s"[task $i] taken the read lock, reading...").debugThread
+      time <- Random.nextIntBounded(1000)
+      _ <- ZIO.sleep(time.millis)
+      res <- Random.nextIntBounded(100) // actual computation
+      _ <- ZIO.succeed(s"[task $i] read value: $res").debugThread
+      // critical region end
+      _ <- lock.releaseRead.commit
+    } yield ()
+
+    def write(lock: TReentrantLock): UIO[Unit] = for {
+      // writer
+      _ <- ZIO.sleep(200.millis)
+      _ <- ZIO.succeed("[writer] trying to write...").debugThread
+      _ <- lock.acquireWrite.commit
+      // critical region
+      _ <- ZIO.succeed("[writer] I'm able to write!").debugThread
+      // critical region end
+      _ <- lock.releaseWrite.commit
+    } yield ()
+
+    for {
+      lock <- TReentrantLock.make.commit
+      readersFib <- ZIO.collectAllParDiscard((1 to 10).map(read(_, lock))).fork
+      writerFib <- write(lock).fork
+      _ <- readersFib.join
+      _ <- writerFib.join
+    } yield ()
+  }
+
+  def run = demoReadersWriters()
 }
