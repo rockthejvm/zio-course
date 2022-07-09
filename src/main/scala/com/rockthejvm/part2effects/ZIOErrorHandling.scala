@@ -133,8 +133,8 @@ object ZIOErrorHandling extends ZIOAppDefault {
 
   def callHTTPEndpoint_v2(url: String): ZIO[Any, IOException, String] =
     callHTTPEndpointWideError(url).refineOrDie[IOException] {
-      case e: IOException => e
       case _: NoRouteToHostException => new IOException(s"No route to host to $url, can't fetch page")
+      case e: IOException => e
     }
 
   // reverse: turn defects into the error channel
