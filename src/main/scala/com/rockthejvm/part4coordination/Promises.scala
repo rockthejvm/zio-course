@@ -133,8 +133,8 @@ object Promises extends ZIOAppDefault {
     ZIO.uninterruptibleMask { restore =>
       for {
         promise <- Promise.make[Nothing, Either[Exit[E,A], Exit[E,B]]]
-        fibA <- zioa.onExit(exita => promise.succeed(Left(exita))).fork
-        fibB <- ziob.onExit(exitb => promise.succeed(Right(exitb))).fork
+        fibA <- restore(zioa).onExit(exita => promise.succeed(Left(exita))).fork
+        fibB <- restore(ziob).onExit(exitb => promise.succeed(Right(exitb))).fork
 
         result <- restore(promise.await).onInterrupt {
           for {
@@ -150,9 +150,9 @@ object Promises extends ZIOAppDefault {
       }
     }
 
-  def demoRacePair() = {
+  val demoRacePair = {
     val zioa = ZIO.sleep(1.second).as(1).onInterrupt(ZIO.succeed("first interrupted").debugThread)
-    val ziob = ZIO.sleep(2.second).as(2).onInterrupt(ZIO.succeed("first interrupted").debugThread)
+    val ziob = ZIO.sleep(2.second).as(2).onInterrupt(ZIO.succeed("second interrupted").debugThread)
 
     val pair = racePair(zioa, ziob)
 
@@ -163,5 +163,5 @@ object Promises extends ZIOAppDefault {
   }
 
 
-  def run = demoRacePair()
+  def run = demoRacePair
 }
