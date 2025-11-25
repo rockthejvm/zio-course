@@ -19,7 +19,7 @@ object ServiceModel {
     def create(emailService: EmailService, userDatabase: UserDatabase) =
       new UserSubscription(emailService, userDatabase)
 
-    val live: ZLayer[EmailService with UserDatabase, Nothing, UserSubscription] =
+    val live: ZLayer[EmailService & UserDatabase, Nothing, UserSubscription] =
       ZLayer.fromFunction(new UserSubscription(_, _))
   }
 

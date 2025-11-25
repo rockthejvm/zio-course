@@ -62,20 +62,20 @@ object ZIODependencies extends ZIOAppDefault {
    */
   val connectionPoolLayer: ZLayer[Any, Nothing, ConnectionPool] =
     ZLayer.succeed(ConnectionPool.create(10))
-  // a layer that requires a dependency (higher layer) can be built with ZLayer.fromFunction
+  // a layer that requires a dependency (higher layer) can be built & ZLayer.fromFunction
   // (and automatically fetch the function arguments and place them into the ZLayer's dependency/environment type argument)
   val databaseLayer: ZLayer[ConnectionPool, Nothing, UserDatabase] =
-  ZLayer.fromFunction(UserDatabase.create _)
+    ZLayer.fromFunction(new UserDatabase(_))
   val emailServiceLayer: ZLayer[Any, Nothing, EmailService] =
     ZLayer.succeed(EmailService.create())
-  val userSubscriptionServiceLayer: ZLayer[UserDatabase with EmailService, Nothing, UserSubscription] =
-    ZLayer.fromFunction(UserSubscription.create _)
+  val userSubscriptionServiceLayer: ZLayer[UserDatabase & EmailService, Nothing, UserSubscription] =
+    ZLayer.fromFunction(new UserSubscription(_, _))
 
   // composing layers
   // vertical composition >>>
   val databaseLayerFull: ZLayer[Any, Nothing, UserDatabase] = connectionPoolLayer >>> databaseLayer
   // horizontal composition: combines the dependencies of both layers AND the values of both layers
-  val subscriptionRequirementsLayer: ZLayer[Any, Nothing, UserDatabase with EmailService] =
+  val subscriptionRequirementsLayer: ZLayer[Any, Nothing, UserDatabase & EmailService] =
     databaseLayerFull ++ emailServiceLayer
   // mix & match
   val userSubscriptionLayer: ZLayer[Any, Nothing, UserSubscription] =
@@ -106,11 +106,11 @@ object ZIODependencies extends ZIOAppDefault {
   )
 
   // passthrough
-  val dbWithPoolLayer: ZLayer[ConnectionPool, Nothing, ConnectionPool with UserDatabase] = UserDatabase.live.passthrough
+  val dbWithPoolLayer: ZLayer[ConnectionPool, Nothing, ConnectionPool & UserDatabase] = UserDatabase.live.passthrough
   // service = take a dep and expose it as a value to further layers
   val dbService = ZLayer.service[UserDatabase]
   // launch = creates a ZIO that uses the services and never finishes
-  val subscriptionLaunch: ZIO[EmailService with UserDatabase, Nothing, Nothing] = UserSubscription.live.launch
+  val subscriptionLaunch: ZIO[EmailService & UserDatabase, Nothing, Nothing] = UserSubscription.live.launch
   // memoization
 
   /*

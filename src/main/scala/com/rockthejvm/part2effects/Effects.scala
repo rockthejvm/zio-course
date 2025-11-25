@@ -23,7 +23,7 @@ object Effects {
 
   // example 2: changing a variable
   var anInt = 0
-  val changingInt: Unit = (anInt = 42) // side effect
+  val changingInt: Unit = { anInt = 42 } // side effect
   val changingInt_v2: Unit = () // not the same program
 
   // side effects are inevitable
