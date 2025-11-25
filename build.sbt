@@ -1,9 +1,9 @@
 name := "zio"
 version := "0.1"
-scalaVersion := "3.1.3"
+scalaVersion := "3.7.4"
 
 
-lazy val zioVersion = "2.0.0"
+lazy val zioVersion = "2.1.22"
 
 libraryDependencies ++= Seq(
   "dev.zio" %% "zio" % zioVersion,

@@ -20,7 +20,7 @@ object ServiceModel {
       new UserSubscription(emailService, userDatabase)
 
     val live: ZLayer[EmailService with UserDatabase, Nothing, UserSubscription] =
-      ZLayer.fromFunction(create _)
+      ZLayer.fromFunction(new UserSubscription(_, _))
   }
 
   class EmailService {
@@ -31,7 +31,7 @@ object ServiceModel {
   object EmailService {
     def create(): EmailService = new EmailService
     val live: ZLayer[Any, Nothing, EmailService] =
-      ZLayer.succeed(create())
+      ZLayer.succeed(new EmailService)
   }
 
   class UserDatabase(connectionPool: ConnectionPool) {
@@ -45,7 +45,7 @@ object ServiceModel {
     def create(connectionPool: ConnectionPool) =
       new UserDatabase(connectionPool)
     val live: ZLayer[ConnectionPool, Nothing, UserDatabase] =
-      ZLayer.fromFunction(create _)
+      ZLayer.fromFunction(new UserDatabase(_))
   }
 
   class ConnectionPool(nConnections: Int) {
@@ -57,7 +57,7 @@ object ServiceModel {
     def create(nConnections: Int) =
       new ConnectionPool(nConnections)
     def live(nConnections: Int): ZLayer[Any, Nothing, ConnectionPool] =
-      ZLayer.succeed(create(nConnections))
+      ZLayer.succeed(new ConnectionPool(nConnections))
   }
 
   case class Connection() {
